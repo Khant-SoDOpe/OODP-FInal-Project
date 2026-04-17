@@ -1,3 +1,4 @@
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -9,6 +10,8 @@ import java.time.format.DateTimeFormatter;
  * Features: Add items, search, filter, mark worn, create outfits, generate random outfits
  */
 public class WardrobeApp {
+    private static final String DATA_FILE = "wardrobe.txt";
+
     private Scanner scanner;
     private Wardrobe wardrobe;
     private List<Outfit> outfits;
@@ -32,6 +35,7 @@ public class WardrobeApp {
 
     public void run() {
         showWelcome();
+        loadWardrobe();
         boolean running = true;
         while (running) {
             displayMenu();
@@ -47,9 +51,37 @@ public class WardrobeApp {
                 case 8: createOutfit(); break;
                 case 9: viewOutfits(); break;
                 case 10: randomOutfit(); break;
-                case 11: running = false; System.out.println("\n" + CYAN + "👋 Goodbye!\n" + RESET); break;
+                case 11:
+                    running = false;
+                    saveWardrobe();
+                    System.out.println("\n" + CYAN + "👋 Goodbye!\n" + RESET);
+                    break;
                 default: System.out.println(RED + "❌ Invalid choice.\n" + RESET);
             }
+        }
+    }
+
+    private void loadWardrobe() {
+        try {
+            wardrobe.loadFromFile(DATA_FILE);
+            if (!wardrobe.getItems().isEmpty()) {
+                System.out.println(GREEN + "📂 Loaded " + wardrobe.getItems().size()
+                        + " item(s) from " + DATA_FILE + RESET);
+            }
+        } catch (IOException e) {
+            System.out.println(RED + "❌ Could not read " + DATA_FILE + ": " + e.getMessage() + RESET);
+        } catch (WardrobeException e) {
+            System.out.println(RED + "❌ Data file is corrupt: " + e.getMessage() + RESET);
+        }
+    }
+
+    private void saveWardrobe() {
+        try {
+            wardrobe.saveToFile(DATA_FILE);
+            System.out.println(GREEN + "💾 Saved " + wardrobe.getItems().size()
+                    + " item(s) to " + DATA_FILE + RESET);
+        } catch (IOException e) {
+            System.out.println(RED + "❌ Failed to save: " + e.getMessage() + RESET);
         }
     }
 
@@ -102,19 +134,23 @@ public class WardrobeApp {
         double price = getPositiveDoubleInput("Purchase Price ($): ");
         int threshold = getPositiveIntInput("Times to wear before laundry: ");
 
-        wardrobe.addItem(new ClothingItem(name, category, color, size, purchaseDate, lastWornDate, price, threshold));
-        System.out.println(GREEN + "\n✅ Item added!" + RESET);
+        try {
+            wardrobe.addItem(new ClothingItem(name, category, color, size, purchaseDate, lastWornDate, price, threshold));
+            System.out.println(GREEN + "\n✅ Item added!" + RESET);
+        } catch (WardrobeException e) {
+            System.out.println(RED + "\n❌ " + e.getMessage() + RESET);
+        }
     }
 
     private void searchItem() {
         System.out.print("\n🔍 Enter item name: ");
         String name = scanner.nextLine().trim();
-        ClothingItem item = wardrobe.searchByName(name);
-        if (item != null) {
+        try {
+            ClothingItem item = wardrobe.searchByName(name);
             System.out.println("\n" + "=".repeat(90));
             System.out.println(item);
-        } else {
-            System.out.println(RED + "\n❌ Item not found." + RESET);
+        } catch (WardrobeException e) {
+            System.out.println(RED + "\n❌ " + e.getMessage() + RESET);
         }
     }
 
@@ -234,9 +270,7 @@ public class WardrobeApp {
         if (outfits.isEmpty()) {
             System.out.println(YELLOW + "\n📭 No outfits created yet." + RESET);
         } else {
-            for (Outfit outfit : outfits) {
-                outfit.display();
-            }
+            Wardrobe.displayAll(outfits);
         }
     }
 

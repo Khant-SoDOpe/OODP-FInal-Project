@@ -1,8 +1,33 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+
+/**
+ * Custom checked exception for wardrobe-related errors
+ * (duplicates, missing items, corrupt file data, etc.).
+ */
+class WardrobeException extends Exception {
+    public WardrobeException(String message) {
+        super(message);
+    }
+}
+
+/**
+ * Displayable - interface implemented by every printable wardrobe entity.
+ * Enables parametric polymorphism: a single generic method can display
+ * any List<T extends Displayable> without caring about the concrete type.
+ */
+interface Displayable {
+    void display();
+}
 
 /**
  * Category Enum - Defines all valid clothing categories
@@ -47,7 +72,7 @@ enum Category {
 /**
  * ClothingItem - Represents a single clothing item
  */
-class ClothingItem {
+class ClothingItem implements Displayable {
     private String name;
     private Category category;
     private String color;
@@ -88,11 +113,53 @@ class ClothingItem {
     public void setSize(String size) { this.size = size; }
     public void setLastWornDate(LocalDate lastWornDate) { this.lastWornDate = lastWornDate; }
     public void setPurchasePrice(double purchasePrice) { this.purchasePrice = purchasePrice; }
+    public void setTimesWorn(int timesWorn) { this.timesWorn = timesWorn; }
     public void setWearThresholdForLaundry(int wearThresholdForLaundry) {
         this.wearThresholdForLaundry = wearThresholdForLaundry;
     }
 
     public void incrementTimesWorn() { this.timesWorn++; }
+
+    @Override
+    public void display() {
+        System.out.println(this);
+    }
+
+    /** Serialize to a pipe-delimited line for file persistence. */
+    public String toFileString() {
+        return String.join("|",
+                name,
+                category.name(),
+                color,
+                size,
+                purchaseDate.toString(),
+                lastWornDate == null ? "null" : lastWornDate.toString(),
+                String.valueOf(purchasePrice),
+                String.valueOf(timesWorn),
+                String.valueOf(wearThresholdForLaundry));
+    }
+
+    /** Reconstruct a ClothingItem from a serialized file line. */
+    public static ClothingItem fromFileString(String line) throws WardrobeException {
+        String[] parts = line.split("\\|", -1);
+        if (parts.length != 9) {
+            throw new WardrobeException("Corrupt data line: " + line);
+        }
+        try {
+            Category cat = Category.valueOf(parts[1]);
+            LocalDate purchase = LocalDate.parse(parts[4]);
+            LocalDate lastWorn = parts[5].equals("null") ? null : LocalDate.parse(parts[5]);
+            double price = Double.parseDouble(parts[6]);
+            int worn = Integer.parseInt(parts[7]);
+            int threshold = Integer.parseInt(parts[8]);
+            ClothingItem item = new ClothingItem(parts[0], cat, parts[2], parts[3],
+                    purchase, lastWorn, price, threshold);
+            item.setTimesWorn(worn);
+            return item;
+        } catch (Exception e) {
+            throw new WardrobeException("Failed to parse item: " + e.getMessage());
+        }
+    }
 
     @Override
     public String toString() {
@@ -105,7 +172,7 @@ class ClothingItem {
 /**
  * Outfit - Represents a collection of clothing items (max 1 per category)
  */
-class Outfit {
+class Outfit implements Displayable {
     private String name;
     private List<ClothingItem> items;
 
@@ -115,7 +182,6 @@ class Outfit {
     }
 
     public boolean addItem(ClothingItem item) {
-        // Check if outfit already has an item from this category
         for (ClothingItem existing : items) {
             if (existing.getCategory() == item.getCategory()) {
                 return false;
@@ -134,6 +200,7 @@ class Outfit {
         return false;
     }
 
+    @Override
     public void display() {
         System.out.println("\n✨ Outfit: " + name);
         for (ClothingItem item : items) {
@@ -155,7 +222,25 @@ class Wardrobe {
         this.items = new ArrayList<>();
     }
 
-    public void addItem(ClothingItem item) {
+    /**
+     * Generic display method — parametric polymorphism.
+     * Works on any List whose element type implements Displayable
+     * (ClothingItem, Outfit, or any future Displayable class).
+     */
+    public static <T extends Displayable> void displayAll(List<T> list) {
+        for (T item : list) {
+            item.display();
+        }
+    }
+
+    /** Throws a custom exception if an item with the same name already exists. */
+    public void addItem(ClothingItem item) throws WardrobeException {
+        for (ClothingItem existing : items) {
+            if (existing.getName().equalsIgnoreCase(item.getName())) {
+                throw new WardrobeException(
+                        "An item named '" + item.getName() + "' already exists.");
+            }
+        }
         items.add(item);
     }
 
@@ -168,18 +253,17 @@ class Wardrobe {
         System.out.printf("%-20s %-15s %-20s %-8s %-15s\n",
                 "Name", "Category", "Color", "Size", "Last Worn");
         System.out.println("=".repeat(90));
-        for (ClothingItem item : items) {
-            System.out.println(item);
-        }
+        displayAll(items);
     }
 
-    public ClothingItem searchByName(String name) {
+    /** Throws WardrobeException if no item is found. */
+    public ClothingItem searchByName(String name) throws WardrobeException {
         for (ClothingItem item : items) {
             if (item.getName().equalsIgnoreCase(name)) {
                 return item;
             }
         }
-        return null;
+        throw new WardrobeException("Item '" + name + "' not found in wardrobe.");
     }
 
     public void displayByCategory(Category category) {
@@ -265,4 +349,29 @@ class Wardrobe {
     }
 
     public List<ClothingItem> getItems() { return items; }
+
+    // ---- File I/O ----
+
+    /** Save the entire wardrobe to a plain-text file. */
+    public void saveToFile(String filename) throws IOException {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+            for (ClothingItem item : items) {
+                writer.println(item.toFileString());
+            }
+        }
+    }
+
+    /** Load wardrobe contents from a file; no-op if the file does not exist. */
+    public void loadFromFile(String filename) throws IOException, WardrobeException {
+        File file = new File(filename);
+        if (!file.exists()) return;
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                items.add(ClothingItem.fromFileString(line));
+            }
+        }
+    }
 }
