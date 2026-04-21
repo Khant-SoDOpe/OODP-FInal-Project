@@ -163,9 +163,10 @@ class ClothingItem implements Displayable {
 
     @Override
     public String toString() {
-        return String.format("%-20s %-15s %-20s %-8s %-15s",
+        return String.format("%-20s %-12s %-12s %-8s %-12s %-12s %-10s %-10s %-10s",
                 name, category, color, size,
-                lastWornDate == null ? "Never" : lastWornDate);
+                purchaseDate, lastWornDate == null ? "Never" : lastWornDate,
+                String.format("$%.2f", purchasePrice), timesWorn, wearThresholdForLaundry);
     }
 }
 
@@ -249,10 +250,10 @@ class Wardrobe {
             System.out.println("\n❌ No items found.");
             return;
         }
-        System.out.println("\n" + "=".repeat(90));
-        System.out.printf("%-20s %-15s %-20s %-8s %-15s\n",
-                "Name", "Category", "Color", "Size", "Last Worn");
-        System.out.println("=".repeat(90));
+        System.out.println("\n" + "=".repeat(145));
+        System.out.printf("%-20s %-12s %-12s %-8s %-12s %-12s %-10s %-10s %-10s\n",
+                "Name", "Category", "Color", "Size", "Purchase", "Last Worn", "Price", "Worn", "Threshold");
+        System.out.println("=".repeat(145));
         displayAll(items);
     }
 
@@ -267,10 +268,10 @@ class Wardrobe {
     }
 
     public void displayByCategory(Category category) {
-        System.out.println("\n" + "=".repeat(90));
-        System.out.printf("%-20s %-15s %-20s %-8s %-15s\n",
-                "Name", "Category", "Color", "Size", "Last Worn");
-        System.out.println("=".repeat(90));
+        System.out.println("\n" + "=".repeat(145));
+        System.out.printf("%-20s %-12s %-12s %-8s %-12s %-12s %-10s %-10s %-10s\n",
+                "Name", "Category", "Color", "Size", "Purchase", "Last Worn", "Price", "Worn", "Threshold");
+        System.out.println("=".repeat(145));
         boolean found = false;
         for (ClothingItem item : items) {
             if (item.getCategory() == category) {

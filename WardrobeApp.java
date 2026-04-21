@@ -205,32 +205,56 @@ public class WardrobeApp {
         System.out.println("2. Size (Current: " + item.getSize() + ")");
         System.out.println("3. Last Worn Date (Current: " + (item.getLastWornDate() == null ? "Never" : item.getLastWornDate()) + ")");
         System.out.println("4. Price (Current: $" + item.getPurchasePrice() + ")");
-        System.out.print("\nSelect field (1-4): ");
+        System.out.println("5. Times Worn (Current: " + item.getTimesWorn() + ")");
+        System.out.print("\nSelect field (1-5): ");
         int field = getIntInput();
         switch (field) {
             case 1:
                 System.out.print("New color: ");
                 item.setColor(scanner.nextLine().trim());
                 System.out.println(GREEN + "✅ Updated!" + RESET);
+                saveWardrobe();
                 break;
             case 2:
                 System.out.print("New size: ");
                 item.setSize(scanner.nextLine().trim());
                 System.out.println(GREEN + "✅ Updated!" + RESET);
+                saveWardrobe();
                 break;
             case 3:
                 LocalDate newDate = getDateInput("New date (DD-MM-YYYY): ");
                 if (newDate != null) {
                     item.setLastWornDate(newDate);
                     System.out.println(GREEN + "✅ Updated!" + RESET);
+                    saveWardrobe();
                 }
                 break;
             case 4:
                 double newPrice = getPositiveDoubleInput("New price ($): ");
                 item.setPurchasePrice(newPrice);
                 System.out.println(GREEN + "✅ Updated!" + RESET);
+                saveWardrobe();
+                break;
+            case 5:
+                int newTimesWorn = getPositiveIntInput("New times worn: ");
+                item.setTimesWorn(newTimesWorn);
+                System.out.println(GREEN + "✅ Updated!" + RESET);
+                saveWardrobe();
                 break;
         }
+        displayUpdatedItem(item);
+    }
+
+    private void displayUpdatedItem(ClothingItem item) {
+        System.out.println("\n" + CYAN + "--- Updated Item Details ---" + RESET);
+        System.out.println(BOLD + "Name: " + RESET + item.getName());
+        System.out.println(BOLD + "Category: " + RESET + item.getCategory());
+        System.out.println(BOLD + "Color: " + RESET + item.getColor());
+        System.out.println(BOLD + "Size: " + RESET + item.getSize());
+        System.out.println(BOLD + "Purchase Date: " + RESET + item.getPurchaseDate());
+        System.out.println(BOLD + "Last Worn Date: " + RESET + (item.getLastWornDate() == null ? "Never" : item.getLastWornDate()));
+        System.out.println(BOLD + "Price: " + RESET + "$" + item.getPurchasePrice());
+        System.out.println(BOLD + "Times Worn: " + RESET + item.getTimesWorn());
     }
 
     private void createOutfit() {
