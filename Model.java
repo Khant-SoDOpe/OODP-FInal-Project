@@ -359,6 +359,10 @@ class Wardrobe {
             for (ClothingItem item : items) {
                 writer.println(item.toFileString());
             }
+            writer.flush();
+            if (writer.checkError()) {
+                throw new IOException("Failed to write to file: " + filename);
+            }
         }
     }
 
